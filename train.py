@@ -83,7 +83,13 @@ def train_model(config):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
     device = torch.device(device)
-    Path(f"{config['datasource']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
+
+    # Ensure the model and experiment directories exist
+    model_folder = Path(f"{config['datasource']}/{config['model_folder']}")
+    model_folder.mkdir(parents=True, exist_ok=True)
+    experiment_folder = Path(config['experiment_name'])
+    experiment_folder.mkdir(parents=True, exist_ok=True)
+
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     writer = SummaryWriter(config['experiment_name'])
