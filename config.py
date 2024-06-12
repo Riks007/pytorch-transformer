@@ -4,7 +4,7 @@ def get_config():
     # base_path = '/content/drive/My Drive/Transformer'
     return {
         "batch_size": 20,
-        "num_epochs": 1,
+        "num_epochs": 5,
         "lr": 10**-4,
         "seq_len": 350,
         "d_model": 512,
