@@ -83,11 +83,7 @@ def train_model(config):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
     device = torch.device(device)
-
-    # Ensure the model directory exists
-    model_folder = os.path.join(config['datasource'], config['model_folder'])
-    os.makedirs(model_folder, exist_ok=True)
-
+    Path(f"{config['datasource']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     writer = SummaryWriter(config['experiment_name'])
@@ -121,7 +117,7 @@ def train_model(config):
             label = batch['label'].to(device)
             loss = loss_fn(proj_output.view(-1, tokenizer_tgt.get_vocab_size()), label.view(-1))
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
-            writer.add_scalar('train loss', loss.item(), global_step)
+            writer.add_scalar('train loss', loss.item(), global_step)  # Log train loss to TensorBoard
             writer.flush()
             loss.backward()
             optimizer.step()
@@ -145,19 +141,23 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
     predicted = []
 
     try:
+        # get the console window width
         with os.popen('stty size', 'r') as console:
             _, console_width = console.read().split()
             console_width = int(console_width)
     except:
+        # If we can't get the console width, use 80 as default
         console_width = 80
 
     with torch.no_grad():
         for batch in validation_ds:
             count += 1
-            encoder_input = batch["encoder_input"].to(device)
-            encoder_mask = batch["encoder_mask"].to(device)
+            encoder_input = batch["encoder_input"].to(device) # (b, seq_len)
+            encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_len)
 
-            assert encoder_input.size(0) == 1, "Batch size must be 1 for validation"
+            # check that the batch size is 1
+            assert encoder_input.size(
+                0) == 1, "Batch size must be 1 for validation"
 
             model_out = greedy_decode(model, encoder_input, encoder_mask, tokenizer_src, tokenizer_tgt, max_len, device)
 
@@ -169,6 +169,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             expected.append(target_text)
             predicted.append(model_out_text)
             
+            # Print the source, target and model output
             print_msg('-'*console_width)
             print_msg(f"{f'SOURCE: ':>12}{source_text}")
             print_msg(f"{f'TARGET: ':>12}{target_text}")
@@ -178,26 +179,28 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
                 print_msg('-'*console_width)
                 break
     
-        if writer:
-            # Evaluate the character error rate
-            metric = torchmetrics.CharErrorRate()
-            cer = metric(predicted, expected)
-            writer.add_scalar('validation cer', cer, global_step)
-            writer.flush()
+    if writer:
+        # Evaluate the character error rate
+        # Compute the char error rate 
+        metric = torchmetrics.CharErrorRate()
+        cer = metric(predicted, expected)
+        writer.add_scalar('validation cer', cer, global_step)
+        writer.flush()
 
-            # Evaluate the word error rate
-            metric = torchmetrics.WordErrorRate()
-            wer = metric(predicted, expected)
-            writer.add_scalar('validation wer', wer, global_step)
-            writer.flush()
+        # Compute the word error rate
+        metric = torchmetrics.WordErrorRate()
+        wer = metric(predicted, expected)
+        writer.add_scalar('validation wer', wer, global_step)
+        writer.flush()
 
-            # Evaluate the BLEU metric
-            metric = torchmetrics.BLEUScore()
-            bleu = metric(predicted, expected)
-            writer.add_scalar('validation BLEU', bleu, global_step)
-            writer.flush()
+        # Compute the BLEU metric
+        metric = torchmetrics.BLEUScore()
+        bleu = metric(predicted, expected)
+        writer.add_scalar('validation BLEU', bleu, global_step)
+        writer.flush()
 
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     config = get_config()
     train_model(config)
+
