@@ -4,7 +4,7 @@ def get_config():
     # base_path = '/content/drive/My Drive/Transformer'
     return {
         "batch_size": 20,
-        "num_epochs": 5,
+        "num_epochs": 1,
         "lr": 10**-4,
         "seq_len": 350,
         "d_model": 512,
@@ -21,16 +21,14 @@ def get_config():
     }
 
 def get_weights_file_path(config, epoch: str):
-    model_folder = Path(f"{config['datasource']}/{config['model_folder']}")
-    model_folder.mkdir(parents=True, exist_ok=True)  # Create directories if they don't exist
+    model_folder = f"{config['datasource']}/{config['model_folder']}"
     model_filename = f"{config['model_basename']}{epoch}.pt"
-    return str(model_folder / model_filename)
+    return str(Path(model_folder) / model_filename)
 
 def latest_weights_file_path(config):
-    model_folder = Path(f"{config['datasource']}/{config['model_folder']}")
-    model_folder.mkdir(parents=True, exist_ok=True)  # Create directories if they don't exist
+    model_folder = f"{config['datasource']}/{config['model_folder']}"
     model_filename = f"{config['model_basename']}*"
-    weights_files = list(model_folder.glob(model_filename))
+    weights_files = list(Path(model_folder).glob(model_filename))
     if len(weights_files) == 0:
         return None
     weights_files.sort()
