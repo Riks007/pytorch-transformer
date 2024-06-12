@@ -90,6 +90,11 @@ def train_model(config):
     experiment_folder = Path(config['experiment_name'])
     experiment_folder.mkdir(parents=True, exist_ok=True)
 
+    # Check if the dataset exists in the Hugging Face repository
+    all_datasets = list_datasets()
+    if config['datasource'] not in all_datasets:
+        raise ValueError(f"Dataset {config['datasource']} not found in Hugging Face datasets.")
+
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     writer = SummaryWriter(config['experiment_name'])
@@ -137,6 +142,11 @@ def train_model(config):
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step
         }, model_filename)
+
+if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
+    config = get_config()
+    train_model(config)
 
 def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
     model.eval()
